@@ -26,7 +26,7 @@ A simple web app to view and record RTSP camera streams using FastAPI and FFmpeg
 sudo apt install python3-pip ffmpeg nmap
 
 # Clone and setup
-git clone <your-repo-url>
+git clone git@github.com:ugonzalez97/rtsp-stream-recorder.git
 cd rtsp-stream-recorder
 python3 -m venv venv
 source venv/bin/activate
