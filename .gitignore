@@ -1,6 +1,34 @@
+# Python
 venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Proyecto
 recordings/
+cameras_config.json
+app_old.py
+test.py
+test.ipynb
+
+# Logs
 *.log
 *.tmp
-test.ipynb
-cameras_config.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
