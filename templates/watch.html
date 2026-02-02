@@ -86,11 +86,33 @@
     </div>
     
     <div class="video-container">
-        <video controls autoplay>
-            <source src="/recordings/serve/{{ video }}" type="video/mp4">
+        <video controls autoplay id="videoPlayer">
+            <source src="/recordings/serve/{{ video }}" id="videoSource">
             Tu navegador no soporta el elemento de video.
         </video>
     </div>
+    
+    <script>
+        // Detectar tipo MIME basado en extensión de archivo
+        const filename = "{{ video }}";
+        const ext = filename.split('.').pop().toLowerCase();
+        const mimeTypes = {
+            'mp4': 'video/mp4',
+            'mkv': 'video/x-matroska',
+            'ts': 'video/mp2t',
+            'avi': 'video/x-msvideo',
+            'mov': 'video/quicktime',
+            'webm': 'video/webm'
+        };
+        
+        const videoSource = document.getElementById('videoSource');
+        const mimeType = mimeTypes[ext] || 'video/mp4';
+        videoSource.type = mimeType;
+        
+        // Recargar el video con el tipo correcto
+        const videoPlayer = document.getElementById('videoPlayer');
+        videoPlayer.load();
+    </script>
     
     <div class="controls-info">
         💡 Usa los controles del reproductor para pausar, ajustar volumen, pantalla completa, etc.

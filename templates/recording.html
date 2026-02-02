@@ -72,6 +72,7 @@
         .form-group {
             display: flex;
             flex-direction: column;
+            padding: 5px 0;
         }
         
         .form-group.full-width {
@@ -234,8 +235,8 @@
         
         .advanced-settings {
             margin-top: 20px;
-            padding-top: 20px;
-            border-top: 2px solid #e5e7eb;
+            padding-top: 12px;
+            border-top: 1px dashed #e5e7eb;
         }
         
         .advanced-settings h4 {
@@ -246,11 +247,18 @@
         .main-content {
             display: grid;
             grid-template-columns: 1fr;
+            grid-template-areas: "form";
             gap: 20px;
+            align-items: start;
         }
         
         .main-content.with-preview {
-            grid-template-columns: 1fr 400px;
+            grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+            grid-template-areas: "form preview";
+        }
+
+        #formColumn {
+            grid-area: form;
         }
         
         .preview-container {
@@ -259,6 +267,7 @@
             padding: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             display: none;
+            grid-area: preview;
         }
         
         .preview-container.show {
@@ -278,6 +287,55 @@
             aspect-ratio: 16/9;
             object-fit: contain;
         }
+        
+        .camera-checkbox {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .camera-checkbox:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        .camera-checkbox input[type="checkbox"] {
+            margin-right: 8px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .camera-checkbox label {
+            margin: 0;
+            cursor: pointer;
+            flex: 1;
+        }
+        
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        
+        .preview-item {
+            background: white;
+            border-radius: 10px;
+            padding: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .preview-item h4 {
+            text-align: center;
+            color: #1f2937;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
@@ -292,20 +350,24 @@
         </div>
         
         <div class="main-content" id="mainContent">
-            <div>
+            <div class="preview-container" id="previewContainer">
+                <h3>🔴 Vista Previa</h3>
+                <div class="preview-grid" id="previewGrid"></div>
+            </div>
+            
+            <div id="formColumn">
                 <div class="card">
                     <div class="info-box">
                         <h4>ℹ️ Configuración de Grabación</h4>
-                        <p>Selecciona la cámara y configura los parámetros de grabación. Los archivos se guardarán en la carpeta "recordings".</p>
+                        <p>Selecciona la cámara y configura los parámetros de grabación. Los archivos se guardarán en la carpeta "recordings". En modo continuo, la duración define el tamaño de cada segmento y la grabación sigue hasta que la detengas.</p>
                     </div>
                     
-                    <div class="form-grid">
-                        <div class="form-group full-width">
-                            <label>📹 Cámara a Grabar</label>
-                            <select id="cameraSelect" onchange="onCameraSelect()">
-                                <option value="">Selecciona una cámara...</option>
-                            </select>
+                    <div class="form-group full-width">
+                        <label>📹 Cámaras a Grabar (selecciona una o varias)</label>
+                        <div id="camerasCheckboxList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; background: #f9fafb;">
+                            <p style="color: #6b7280; text-align: center; grid-column: 1 / -1;">Cargando cámaras...</p>
                         </div>
+                    </div>
                 
                 <div class="form-group">
                     <label>🎬 Resolución</label>
@@ -322,16 +384,16 @@
                     <label>⏱️ FPS (Frames por Segundo)</label>
                     <select id="fps">
                         <option value="original">Original (sin cambios)</option>
-                        <option value="30" selected>30 FPS</option>
+                        <option value="30">30 FPS</option>
                         <option value="25">25 FPS</option>
                         <option value="20">20 FPS</option>
-                        <option value="15">15 FPS</option>
+                        <option value="15" selected>15 FPS</option>
                         <option value="10">10 FPS</option>
                     </select>
                 </div>
                 
                 <div class="form-group">
-                    <label>⏱️ Duración</label>
+                    <label id="durationLabel">⏱️ Duración total</label>
                     <div style="display: flex; gap: 10px;">
                         <input type="number" id="duration" value="10" min="1" max="9999" placeholder="Duración" style="flex: 1;">
                         <select id="durationUnit" style="flex: 0 0 120px;">
@@ -344,15 +406,10 @@
                 
                 <div class="form-group">
                     <label>🔁 Modo de Grabación</label>
-                    <select id="continuousMode" onchange="toggleSegmentDuration()">
+                    <select id="continuousMode">
                         <option value="false">Normal (un solo archivo)</option>
-                        <option value="true">Continua (archivos segmentados)</option>
+                        <option value="true">Continua (archivos segmentados con la duración indicada)</option>
                     </select>
-                </div>
-                
-                <div class="form-group" id="segmentDurationGroup" style="display: none;">
-                    <label>📊 Duración de Segmento (minutos)</label>
-                    <input type="number" id="segmentDuration" value="15" min="1" max="120" placeholder="Duración del segmento">
                 </div>
                 
                 <div class="form-group">
@@ -394,7 +451,7 @@
                 </div>
             </div>
             
-            <button class="btn btn-record" id="recordBtn" onclick="toggleRecording()">
+            <button class="btn btn-record" id="recordBtn" onclick="startRecording()">
                 ⏺️ Iniciar Grabación
             </button>
             
@@ -408,45 +465,125 @@
             </div>
         </div>
             </div>
-            
-            <div class="preview-container" id="previewContainer">
-                <h3>🔴 Vista Previa</h3>
-                <img class="preview-video" id="previewVideo" src="" alt="Vista previa de la cámara">
-            </div>
         </div>
     </div>
     
     <script>
-        let recordingState = {
-            isRecording: false,
-            currentRecordingId: null
-        };
+        let availableCameras = {};
         
-        function onCameraSelect() {
-            const cameraId = document.getElementById('cameraSelect').value;
+        function updateDurationModeLabel() {
+            const continuous = document.getElementById('continuousMode').value === 'true';
+            const label = document.getElementById('durationLabel');
+            label.textContent = continuous ? '⏱️ Duración de segmento' : '⏱️ Duración total';
+        }
+        
+        function updateLimitsBasedOnSelection() {
+            const checkboxes = document.querySelectorAll('.camera-checkbox-input:checked');
+            const resolutionSelect = document.getElementById('resolution');
+            const fpsSelect = document.getElementById('fps');
+            
+            let minMaxWidth = Infinity;
+            let minMaxHeight = Infinity;
+            let minMaxFps = Infinity;
+            let hasCameraInfo = false;
+            
+            if (checkboxes.length > 0) {
+                checkboxes.forEach(checkbox => {
+                    const cameraId = checkbox.value;
+                    const camera = availableCameras[cameraId];
+                    const cameraInfo = camera?.info;
+                    
+                    if (cameraInfo && cameraInfo.max_resolution && cameraInfo.max_fps) {
+                        hasCameraInfo = true;
+                        minMaxWidth = Math.min(minMaxWidth, cameraInfo.max_resolution.width || 1920);
+                        minMaxHeight = Math.min(minMaxHeight, cameraInfo.max_resolution.height || 1080);
+                        minMaxFps = Math.min(minMaxFps, cameraInfo.max_fps || 30);
+                    }
+                });
+            }
+            
+            // Si no hay info de cámaras, usar valores por defecto altos
+            if (!hasCameraInfo || checkboxes.length === 0) {
+                minMaxWidth = 1920;
+                minMaxHeight = 1080;
+                minMaxFps = 30;
+            }
+            
+            // Regenerar opciones de resolución dinámicamente
+            const allResolutions = [
+                {value: 'original', label: 'Original (sin cambios)', width: 0, height: 0},
+                {value: '1920x1080', label: '1920x1080 (Full HD)', width: 1920, height: 1080},
+                {value: '1280x720', label: '1280x720 (HD)', width: 1280, height: 720},
+                {value: '854x480', label: '854x480 (SD)', width: 854, height: 480},
+                {value: '640x360', label: '640x360 (Low)', width: 640, height: 360}
+            ];
+            
+            const currentResolution = resolutionSelect.value;
+            resolutionSelect.innerHTML = '';
+            
+            allResolutions.forEach(res => {
+                if (res.value === 'original' || !hasCameraInfo || (res.width <= minMaxWidth && res.height <= minMaxHeight)) {
+                    const option = document.createElement('option');
+                    option.value = res.value;
+                    option.text = res.label;
+                    if (res.value === currentResolution) option.selected = true;
+                    resolutionSelect.appendChild(option);
+                }
+            });
+            
+            // Regenerar opciones de FPS dinámicamente
+            const allFps = [
+                {value: 'original', label: 'Original (sin cambios)', fps: 0},
+                {value: '30', label: '30 FPS', fps: 30},
+                {value: '25', label: '25 FPS', fps: 25},
+                {value: '20', label: '20 FPS', fps: 20},
+                {value: '15', label: '15 FPS', fps: 15},
+                {value: '10', label: '10 FPS', fps: 10}
+            ];
+            
+            const currentFps = fpsSelect.value;
+            fpsSelect.innerHTML = '';
+            
+            allFps.forEach(f => {
+                if (f.value === 'original' || !hasCameraInfo || f.fps <= minMaxFps) {
+                    const option = document.createElement('option');
+                    option.value = f.value;
+                    option.text = f.label;
+                    if (f.value === currentFps) option.selected = true;
+                    fpsSelect.appendChild(option);
+                }
+            });
+        }
+        
+        function onCameraChange() {
+            const checkboxes = document.querySelectorAll('.camera-checkbox-input:checked');
             const previewContainer = document.getElementById('previewContainer');
             const mainContent = document.getElementById('mainContent');
-            const previewVideo = document.getElementById('previewVideo');
+            const previewGrid = document.getElementById('previewGrid');
             
-            if (cameraId) {
-                previewVideo.src = `/video_feed/${cameraId}`;
+            updateLimitsBasedOnSelection();
+            
+            if (checkboxes.length > 0) {
+                previewGrid.innerHTML = '';
+                checkboxes.forEach(checkbox => {
+                    const cameraId = checkbox.value;
+                    const cameraName = availableCameras[cameraId]?.name || cameraId;
+                    
+                    const previewItem = document.createElement('div');
+                    previewItem.className = 'preview-item';
+                    previewItem.innerHTML = `
+                        <img class="preview-video" src="/video_feed/${cameraId}" alt="${cameraName}">
+                        <h4>${cameraName}</h4>
+                    `;
+                    previewGrid.appendChild(previewItem);
+                });
+                
                 previewContainer.classList.add('show');
                 mainContent.classList.add('with-preview');
             } else {
                 previewContainer.classList.remove('show');
                 mainContent.classList.remove('with-preview');
-                previewVideo.src = '';
-            }
-        }
-        
-        function toggleSegmentDuration() {
-            const continuous = document.getElementById('continuousMode').value === 'true';
-            const segmentGroup = document.getElementById('segmentDurationGroup');
-            
-            if (continuous) {
-                segmentGroup.style.display = 'flex';
-            } else {
-                segmentGroup.style.display = 'none';
+                previewGrid.innerHTML = '';
             }
         }
         
@@ -455,110 +592,105 @@
             try {
                 const response = await fetch('/api/cameras');
                 const cameras = await response.json();
+                availableCameras = cameras;
                 
-                const select = document.getElementById('cameraSelect');
-                select.innerHTML = '<option value="">Selecciona una cámara...</option>';
+                const container = document.getElementById('camerasCheckboxList');
                 
+                if (Object.keys(cameras).length === 0) {
+                    container.innerHTML = '<p style="color: #6b7280; text-align: center; grid-column: 1 / -1;">No hay cámaras configuradas. Ve a Configurar para añadir cámaras.</p>';
+                    return;
+                }
+                
+                container.innerHTML = '';
                 for (const [id, info] of Object.entries(cameras)) {
-                    const option = document.createElement('option');
-                    option.value = id;
-                    option.textContent = info.name;
-                    select.appendChild(option);
+                    const checkboxDiv = document.createElement('div');
+                    checkboxDiv.className = 'camera-checkbox';
+                    checkboxDiv.innerHTML = `
+                        <input type="checkbox" class="camera-checkbox-input" value="${id}" id="cam_${id}" onchange="onCameraChange()">
+                        <label for="cam_${id}">${info.name}</label>
+                    `;
+                    container.appendChild(checkboxDiv);
                 }
             } catch (error) {
                 showStatus('error', 'Error cargando cámaras: ' + error.message);
             }
         }
         
-        async function toggleRecording() {
-            if (recordingState.isRecording) {
-                await stopRecording();
-            } else {
-                await startRecording();
-            }
-        }
-        
         async function startRecording() {
-            const cameraId = document.getElementById('cameraSelect').value;
-            if (!cameraId) {
-                showStatus('error', '⚠️ Selecciona una cámara');
+            const selectedCheckboxes = document.querySelectorAll('.camera-checkbox-input:checked');
+            
+            if (selectedCheckboxes.length === 0) {
+                showStatus('error', '⚠️ Selecciona al menos una cámara');
                 return;
             }
             
+            const duration = parseInt(document.getElementById('duration').value);
+            const durationUnit = document.getElementById('durationUnit').value;
+            const continuous = document.getElementById('continuousMode').value === 'true';
+            
+            // En modo continuo, segment_duration es la duración seleccionada convertida a minutos
+            // En modo normal, segment_duration no se usa
+            let segmentMinutes = duration;
+            if (durationUnit === 'seconds') {
+                segmentMinutes = Math.max(1, Math.ceil(duration / 60));
+            } else if (durationUnit === 'hours') {
+                segmentMinutes = duration * 60;
+            } else {
+                segmentMinutes = duration; // ya está en minutos
+            }
+            
             const config = {
-                camera_id: cameraId,
                 resolution: document.getElementById('resolution').value,
                 fps: document.getElementById('fps').value,
-                duration: parseInt(document.getElementById('duration').value),
-                duration_unit: document.getElementById('durationUnit').value,
+                duration: duration,
+                duration_unit: durationUnit,
                 codec: document.getElementById('codec').value,
                 quality: document.getElementById('quality').value,
                 format: document.getElementById('format').value,
                 extra_args: document.getElementById('extraArgs').value,
-                continuous: document.getElementById('continuousMode').value === 'true',
-                segment_duration: parseInt(document.getElementById('segmentDuration').value)
+                continuous: continuous,
+                segment_duration: segmentMinutes
             };
             
             const recordBtn = document.getElementById('recordBtn');
             recordBtn.disabled = true;
             
-            try {
-                const response = await fetch('/api/recording/start', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(config)
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    recordingState.isRecording = true;
-                    recordingState.currentRecordingId = data.recording_id;
-                    
-                    recordBtn.textContent = '⏹️ Detener Grabación';
-                    recordBtn.classList.add('recording');
-                    recordBtn.disabled = false;
-                    
-                    showStatus('success', `✅ Grabación iniciada: ${data.filename}`);
-                    loadActiveRecordings();
-                } else {
-                    showStatus('error', '❌ Error: ' + data.message);
-                    recordBtn.disabled = false;
-                }
-            } catch (error) {
-                showStatus('error', '❌ Error al iniciar grabación: ' + error.message);
-                recordBtn.disabled = false;
-            }
-        }
-        
-        async function stopRecording() {
-            const recordBtn = document.getElementById('recordBtn');
-            recordBtn.disabled = true;
+            let successCount = 0;
+            let errorCount = 0;
             
-            try {
-                const response = await fetch(`/api/recording/stop/${recordingState.currentRecordingId}`, {
-                    method: 'POST'
-                });
+            // Iniciar grabación para cada cámara seleccionada
+            for (const checkbox of selectedCheckboxes) {
+                const cameraId = checkbox.value;
+                const cameraConfig = { ...config, camera_id: cameraId };
                 
-                const data = await response.json();
-                
-                if (data.success) {
-                    recordingState.isRecording = false;
-                    recordingState.currentRecordingId = null;
+                try {
+                    const response = await fetch('/api/recording/start', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(cameraConfig)
+                    });
                     
-                    recordBtn.textContent = '⏺️ Iniciar Grabación';
-                    recordBtn.classList.remove('recording');
-                    recordBtn.disabled = false;
+                    const data = await response.json();
                     
-                    showStatus('success', '✅ Grabación detenida correctamente');
-                    loadActiveRecordings();
-                } else {
-                    showStatus('error', '❌ Error: ' + data.message);
-                    recordBtn.disabled = false;
+                    if (data.success) {
+                        successCount++;
+                    } else {
+                        errorCount++;
+                        console.error(`Error en ${availableCameras[cameraId]?.name}: ${data.message}`);
+                    }
+                } catch (error) {
+                    errorCount++;
+                    console.error(`Error en ${availableCameras[cameraId]?.name}: ${error.message}`);
                 }
-            } catch (error) {
-                showStatus('error', '❌ Error al detener grabación: ' + error.message);
-                recordBtn.disabled = false;
+            }
+            
+            recordBtn.disabled = false;
+            
+            if (successCount > 0) {
+                showStatus('success', `✅ ${successCount} grabación(es) iniciada(s)` + (errorCount > 0 ? ` (${errorCount} error(es))` : ''));
+                loadActiveRecordings();
+            } else {
+                showStatus('error', '❌ No se pudo iniciar ninguna grabación');
             }
         }
         
@@ -574,10 +706,10 @@
                     showStatus('success', '✅ Grabación detenida');
                     loadActiveRecordings();
                 } else {
-                    showStatus('error', '❌ Error: ' + data.message);
+                    showStatus('error', '❌ Error al detener: ' + (data.message || 'Error desconocido'));
                 }
             } catch (error) {
-                showStatus('error', '❌ Error: ' + error.message);
+                showStatus('error', '❌ Error al detener: ' + error.message);
             }
         }
         
@@ -589,17 +721,27 @@
                 const container = document.getElementById('activeRecordings');
                 
                 if (data.recordings && data.recordings.length > 0) {
-                    container.innerHTML = data.recordings.map(rec => `
-                        <div class="recording-item active">
-                            <div class="recording-info">
-                                <div class="recording-name">📹 ${rec.camera_name}</div>
-                                <div class="recording-status active">🔴 Grabando... ${rec.filename}</div>
+                    container.innerHTML = data.recordings.map(rec => {
+                        let modeInfo = '';
+                        if (rec.continuous) {
+                            modeInfo = `<div style="font-size: 0.85em; color: #10b981; margin-top: 3px;">🔁 Continua - Segmentos de ${rec.segment_duration} min</div>`;
+                        } else {
+                            const durationText = `${rec.total_duration} ${rec.duration_unit === 'seconds' ? 'seg' : rec.duration_unit === 'minutes' ? 'min' : 'h'}`;
+                            modeInfo = `<div style="font-size: 0.85em; color: #3b82f6; margin-top: 3px;">📄 Único archivo - ${durationText}</div>`;
+                        }
+                        return `
+                            <div class="recording-item active">
+                                <div class="recording-info">
+                                    <div class="recording-name">📹 ${rec.camera_name}</div>
+                                    <div class="recording-status active">🔴 Grabando... ${rec.filename}</div>
+                                    ${modeInfo}
+                                </div>
+                                <button class="btn-stop" onclick="stopSpecificRecording('${rec.id}')">
+                                    ⏹️ Detener
+                                </button>
                             </div>
-                            <button class="btn-stop" onclick="stopSpecificRecording('${rec.id}')">
-                                ⏹️ Detener
-                            </button>
-                        </div>
-                    `).join('');
+                        `;
+                    }).join('');
                 } else {
                     container.innerHTML = '<p style="color: #6b7280; text-align: center;">No hay grabaciones activas</p>';
                 }
@@ -622,6 +764,8 @@
         // Cargar datos iniciales
         loadCameras();
         loadActiveRecordings();
+        updateDurationModeLabel();
+        document.getElementById('continuousMode').addEventListener('change', updateDurationModeLabel);
         
         // Actualizar grabaciones activas cada 3 segundos
         setInterval(loadActiveRecordings, 3000);

@@ -70,7 +70,7 @@ class FFmpegCamera:
             return
             
         try:
-            # Comando FFmpeg optimizado para BAJA LATENCIA (solo video para preview rápido)
+            # Comando FFmpeg optimizado para BAJA LATENCIA con audio
             command = [
                 'ffmpeg',
                 # Flags de baja latencia
@@ -84,6 +84,7 @@ class FFmpegCamera:
                 '-q:v', '8',  # Calidad media para mayor velocidad
                 '-vf', 'scale=1280:-1',  # Escalar si es muy grande
                 '-r', '15',  # 15 FPS
+                '-an',  # Sin audio (MJPEG solo video)
                 # Más flags de optimización
                 '-probesize', '32',  # Reducir análisis inicial
                 '-analyzeduration', '0',  # No analizar duración
@@ -221,6 +222,30 @@ class FFmpegRecorder:
             return False
         
         try:
+            camera_info = CAMERAS.get(self.camera_id, {}).get("info", {})
+            max_res = camera_info.get('max_resolution', {'width': 1920, 'height': 1080})
+            max_fps = camera_info.get('max_fps', 30)
+
+            # Ajustar resolución solicitada para no superar la capacidad de la cámara
+            effective_resolution = None
+            if self.config.resolution != 'original':
+                try:
+                    req_width, req_height = map(int, self.config.resolution.split('x'))
+                    clamped_width = min(req_width, max_res.get('width', req_width))
+                    clamped_height = min(req_height, max_res.get('height', req_height))
+                    effective_resolution = f"{clamped_width}x{clamped_height}"
+                except ValueError:
+                    effective_resolution = None
+
+            # Ajustar FPS solicitados para no superar la cámara
+            effective_fps = None
+            if self.config.fps != 'original':
+                try:
+                    requested_fps = int(self.config.fps)
+                    effective_fps = min(requested_fps, max_fps) if max_fps else requested_fps
+                except ValueError:
+                    effective_fps = None
+
             # Generar nombre de archivo
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             
@@ -250,12 +275,12 @@ class FFmpegRecorder:
                         command.extend(['-crf', self.config.quality])
                 
                 # Resolución
-                if self.config.resolution != 'original' and self.config.codec != 'copy':
-                    command.extend(['-vf', f'scale={self.config.resolution}'])
+                if effective_resolution and self.config.codec != 'copy':
+                    command.extend(['-vf', f'scale={effective_resolution}'])
                 
                 # FPS
-                if self.config.fps != 'original':
-                    command.extend(['-r', self.config.fps])
+                if effective_fps and self.config.codec != 'copy':
+                    command.extend(['-r', str(effective_fps)])
                 
                 # Codec de audio con bitrate
                 command.extend(['-c:a', 'aac', '-b:a', '128k'])
@@ -268,10 +293,6 @@ class FFmpegRecorder:
                     '-strftime', '1',
                     '-reset_timestamps', '1'
                 ])
-                
-                # Duración total si no es infinita
-                if total_duration > 0:
-                    command.extend(['-t', str(total_duration)])
                 
             else:
                 # Grabación normal de un solo archivo
@@ -290,12 +311,12 @@ class FFmpegRecorder:
                         command.extend(['-crf', self.config.quality])
                 
                 # Resolución
-                if self.config.resolution != 'original' and self.config.codec != 'copy':
-                    command.extend(['-vf', f'scale={self.config.resolution}'])
+                if effective_resolution and self.config.codec != 'copy':
+                    command.extend(['-vf', f'scale={effective_resolution}'])
                 
                 # FPS
-                if self.config.fps != 'original':
-                    command.extend(['-r', self.config.fps])
+                if effective_fps and self.config.codec != 'copy':
+                    command.extend(['-r', str(effective_fps)])
                 
                 # Codec de audio con bitrate
                 command.extend(['-c:a', 'aac', '-b:a', '128k'])
@@ -444,6 +465,66 @@ def get_rtsp_urls_from_onvif(ip: str, port: int, user: str, password: str) -> Li
             'token': 'default'
         }]
 
+def get_camera_info_from_onvif(ip: str, port: int, user: str, password: str) -> dict:
+    """Obtiene información detallada de la cámara (resolución, fps, bitrate, codec)"""
+    try:
+        cam = ONVIFCamera(ip, port, user, password)
+        media = cam.create_media_service()
+        profiles = media.GetProfiles()
+        
+        camera_info = {
+            'profiles': [],
+            'max_resolution': {'width': 0, 'height': 0},
+            'max_fps': 0,
+            'codecs': set()
+        }
+        
+        for profile in profiles:
+            try:
+                cfg = media.GetVideoEncoderConfiguration(
+                    {'ConfigurationToken': profile.VideoEncoderConfiguration.token}
+                )
+                
+                profile_info = {
+                    'name': getattr(profile, 'Name', 'Unknown'),
+                    'codec': str(cfg.Encoding),
+                    'resolution': {
+                        'width': cfg.Resolution.Width,
+                        'height': cfg.Resolution.Height
+                    },
+                    'fps': cfg.RateControl.FrameRateLimit,
+                    'bitrate': cfg.RateControl.BitrateLimit
+                }
+                
+                camera_info['profiles'].append(profile_info)
+                camera_info['codecs'].add(str(cfg.Encoding))
+                
+                # Actualizar máximos
+                if cfg.Resolution.Width > camera_info['max_resolution']['width']:
+                    camera_info['max_resolution'] = {
+                        'width': cfg.Resolution.Width,
+                        'height': cfg.Resolution.Height
+                    }
+                
+                if cfg.RateControl.FrameRateLimit > camera_info['max_fps']:
+                    camera_info['max_fps'] = cfg.RateControl.FrameRateLimit
+                    
+            except Exception as e:
+                print(f"⚠️ Error obteniendo info del perfil: {e}")
+                continue
+        
+        camera_info['codecs'] = list(camera_info['codecs'])
+        return camera_info
+        
+    except Exception as e:
+        print(f"⚠️ Error obteniendo info de cámara {ip}: {e}")
+        return {
+            'profiles': [],
+            'max_resolution': {'width': 1920, 'height': 1080},
+            'max_fps': 30,
+            'codecs': ['H264']
+        }
+
 def generate_frames(camera_id: str):
     """Generador de frames para streaming MJPEG usando FFmpeg"""
     camera = active_cameras.get(camera_id)
@@ -528,11 +609,29 @@ async def list_recordings():
             for file in RECORDINGS_DIR.iterdir():
                 if file.is_file():
                     stats = file.stat()
+                    
+                    # Obtener duración del video usando ffprobe
+                    duration = None
+                    try:
+                        result = subprocess.run(
+                            ['ffprobe', '-v', 'error', '-show_entries', 
+                             'format=duration', '-of', 
+                             'default=noprint_wrappers=1:nokey=1', str(file)],
+                            capture_output=True,
+                            text=True,
+                            timeout=5
+                        )
+                        if result.returncode == 0:
+                            duration = float(result.stdout.strip())
+                    except Exception as e:
+                        print(f"⚠️ Error obteniendo duración de {file.name}: {e}")
+                    
                     recordings.append({
                         'filename': file.name,
                         'size': stats.st_size,
                         'modified': stats.st_mtime,
-                        'format': file.suffix[1:] if file.suffix else 'unknown'
+                        'format': file.suffix[1:] if file.suffix else 'unknown',
+                        'duration': duration
                     })
         
         return JSONResponse({
@@ -562,8 +661,22 @@ async def serve_recording(filename: str, request: Request):
         # Obtener el tipo MIME
         import mimetypes
         mimetype = mimetypes.guess_type(filename)[0]
+        
+        # Manejar casos especiales de MIME types
         if not mimetype:
-            mimetype = 'video/mp4'
+            ext = file_path.suffix.lower()
+            mime_map = {
+                '.mp4': 'video/mp4',
+                '.mkv': 'video/x-matroska',
+                '.ts': 'video/mp2t',
+                '.avi': 'video/x-msvideo',
+                '.mov': 'video/quicktime',
+                '.webm': 'video/webm'
+            }
+            mimetype = mime_map.get(ext, 'video/mp4')
+        elif file_path.suffix.lower() == '.ts':
+            # Forzar el tipo correcto para archivos .ts
+            mimetype = 'video/mp2t'
         
         # Parsear el header Range
         range_header = request.headers.get('range', None)
@@ -693,10 +806,20 @@ async def setup_cameras(request: Request):
                 
                 rtsp_url = streams[0]['url'] if streams else f"rtsp://{cam_data['user']}:{cam_data['password']}@{cam_data['ip']}:554/stream"
             
+            # Obtener información de la cámara
+            camera_info = await asyncio.to_thread(
+                get_camera_info_from_onvif,
+                cam_data['ip'],
+                80,
+                cam_data['user'],
+                cam_data['password']
+            )
+            
             CAMERAS[camera_id] = {
                 "name": cam_data['name'],
                 "url": rtsp_url,
-                "enabled": True
+                "enabled": True,
+                "info": camera_info
             }
         
         # Guardar configuración
@@ -808,7 +931,11 @@ async def get_active_recordings():
             "camera_name": recorder.camera_name,
             "filename": recorder.filename,
             "start_time": recorder.start_time.isoformat() if recorder.start_time else None,
-            "is_recording": recorder.is_recording
+            "is_recording": recorder.is_recording,
+            "continuous": recorder.config.continuous,
+            "segment_duration": recorder.config.segment_duration if recorder.config.continuous else None,
+            "total_duration": recorder.config.duration,
+            "duration_unit": recorder.config.duration_unit
         })
     
     return JSONResponse({"recordings": recordings})
@@ -826,13 +953,19 @@ async def video_feed(camera_id: str):
 
 @app.get("/api/cameras")
 async def list_cameras():
-    """Lista todas las cámaras disponibles"""
+    """Lista todas las cámaras disponibles con su información"""
     cameras_info = {}
     for camera_id, camera in active_cameras.items():
+        camera_config = CAMERAS.get(camera_id, {})
         cameras_info[camera_id] = {
             "name": camera.name,
             "running": camera.is_running,
-            "url": camera.rtsp_url
+            "url": camera.rtsp_url,
+            "info": camera_config.get("info", {
+                "max_resolution": {"width": 1920, "height": 1080},
+                "max_fps": 30,
+                "codecs": ["H264"]
+            })
         }
     return cameras_info
 

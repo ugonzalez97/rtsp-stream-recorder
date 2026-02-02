@@ -372,7 +372,8 @@
                         <div class="video-info">
                             📅 ${formatDate(rec.modified)}<br>
                             💾 ${formatSize(rec.size)}<br>
-                            📦 ${rec.format.toUpperCase()}
+                            📦 ${rec.format.toUpperCase()}<br>
+                            ${rec.duration ? `⏱️ ${formatDuration(rec.duration)}` : ''}
                         </div>
                     </div>
                 </div>
@@ -429,6 +430,22 @@
             if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
             if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
             return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+        }
+        
+        function formatDuration(seconds) {
+            if (!seconds || seconds < 0) return '';
+            
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            
+            if (hours > 0) {
+                return `${hours}h ${minutes}m ${secs}s`;
+            } else if (minutes > 0) {
+                return `${minutes}m ${secs}s`;
+            } else {
+                return `${secs}s`;
+            }
         }
         
         // Cargar grabaciones al inicio

@@ -257,34 +257,45 @@
             width: 300px;
         }
         
+        .top-bar {
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin: 0 auto 20px;
+        }
+
         .back-btn {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 12px 24px;
+            padding: 10px 18px;
             background: white;
             color: #667eea;
             border: 2px solid #667eea;
-            border-radius: 8px;
+            border-radius: 10px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
             text-decoration: none;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
         
         .back-btn:hover {
             background: #667eea;
             color: white;
             transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+            box-shadow: 0 8px 18px rgba(0,0,0,0.2);
         }
     </style>
 </head>
 <body>
-    <a href="/" class="back-btn">📹 Ver Cámaras</a>
-    <a href="/recording" class="back-btn" style="right: 170px;">🎥 Grabar</a>
-    <a href="/recordings_viewer" class="back-btn" style="right: 310px;">📼 Grabaciones</a>
+    <div class="top-bar">
+        <a href="/" class="back-btn">📹 Ver Cámaras</a>
+        <a href="/recording" class="back-btn">🎥 Grabar</a>
+        <a href="/recordings_viewer" class="back-btn">📼 Grabaciones</a>
+    </div>
     
     <div class="container">
         <h1>⚙️ Configuración de Cámaras</h1>

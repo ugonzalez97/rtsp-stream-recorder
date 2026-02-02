@@ -33,6 +33,38 @@
             font-size: 2.5em;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
         }
+
+        .top-bar {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .nav-btn {
+            padding: 10px 18px;
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 18px rgba(0,0,0,0.2);
+        }
         
         .video-container {
             background: white;
@@ -96,34 +128,14 @@
             background: white;
         }
         
-        .setup-btn {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 12px 24px;
-            background: white;
-            color: #667eea;
-            border: 2px solid #667eea;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-decoration: none;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        
-        .setup-btn:hover {
-            background: #667eea;
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(0,0,0,0.2);
-        }
     </style>
 </head>
 <body>
-    <a href="/setup" class="setup-btn">⚙️ Configurar Cámaras</a>
-    <a href="/recording" class="setup-btn" style="right: 190px;">🎥 Grabar</a>
-    <a href="/recordings_viewer" class="setup-btn" style="right: 340px;">📼 Grabaciones</a>
+    <div class="top-bar">
+        <a href="/setup" class="nav-btn">⚙️ Configurar Cámaras</a>
+        <a href="/recording" class="nav-btn">🎥 Grabar</a>
+        <a href="/recordings_viewer" class="nav-btn">📼 Grabaciones</a>
+    </div>
     
     <div class="container">
         <h1>📹 Visor de Cámaras RTSP</h1>
