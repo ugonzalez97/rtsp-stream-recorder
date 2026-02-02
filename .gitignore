@@ -1,0 +1,6 @@
+venv/
+recordings/
+*.log
+*.tmp
+test.ipynb
+cameras_config.json

@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración de Cámaras</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+        
+        .scan-section {
+            text-align: center;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #059669;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            display: none;
+            margin-top: 20px;
+            color: #667eea;
+        }
+        
+        .camera-list {
+            margin-top: 30px;
+            display: none;
+        }
+        
+        .camera-item {
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+        
+        .camera-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+        }
+        
+        .camera-item.selected {
+            border-color: #10b981;
+            background: #f0fdf4;
+        }
+        
+        .camera-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        
+        .camera-info {
+            flex: 1;
+        }
+        
+        .camera-ip {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #1f2937;
+        }
+        
+        .camera-ports {
+            color: #6b7280;
+            font-size: 0.9em;
+        }
+        
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .camera-credentials {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        label {
+            font-size: 0.85em;
+            color: #6b7280;
+            margin-bottom: 5px;
+        }
+        
+        input[type="text"],
+        input[type="password"] {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.95em;
+        }
+        
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.85em;
+            margin-top: 5px;
+        }
+        
+        .streams-list {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f9fafb;
+            border-radius: 6px;
+            display: none;
+        }
+        
+        .stream-option {
+            display: flex;
+            align-items: flex-start;
+            padding: 8px;
+            margin: 5px 0;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .stream-option:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        .stream-option.selected {
+            border-color: #10b981;
+            background: #d1fae5;
+        }
+        
+        .stream-option input[type="radio"] {
+            margin-right: 10px;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+        
+        .stream-content {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .stream-name {
+            font-weight: 600;
+            color: #1f2937;
+        }
+        
+        .stream-url {
+            font-size: 0.8em;
+            color: #6b7280;
+            word-break: break-all;
+            margin-top: 3px;
+        }
+        
+        .actions {
+            margin-top: 30px;
+            text-align: center;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .network-input {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .network-input input {
+            padding: 10px 15px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 1em;
+            width: 300px;
+        }
+        
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .back-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-btn">📹 Ver Cámaras</a>
+    <a href="/recording" class="back-btn" style="right: 170px;">🎥 Grabar</a>
+    <a href="/recordings_viewer" class="back-btn" style="right: 310px;">📼 Grabaciones</a>
+    
+    <div class="container">
+        <h1>⚙️ Configuración de Cámaras</h1>
+        
+        <div class="card scan-section">
+            <h2>Escanear Red</h2>
+            <p style="color: #6b7280; margin: 15px 0;">Buscar cámaras RTSP en tu red local</p>
+            
+            <div class="network-input">
+                <input type="text" id="networkRange" value="192.168.1.0/24" placeholder="192.168.1.0/24">
+            </div>
+            
+            <button class="btn btn-primary" id="scanBtn" onclick="scanNetwork()">
+                🔍 Escanear Red
+            </button>
+            
+            <div class="loading" id="loading">
+                <p>⏳ Escaneando red... Esto puede tardar unos minutos</p>
+            </div>
+            
+            <div class="status" id="status"></div>
+        </div>
+        
+        <div class="card camera-list" id="cameraList">
+            <h2>Cámaras Encontradas</h2>
+            <p style="color: #6b7280; margin-bottom: 20px;">
+                Selecciona las cámaras que deseas visualizar e ingresa las credenciales
+            </p>
+            
+            <div id="cameras"></div>
+            
+            <div class="actions">
+                <button class="btn btn-success" onclick="saveCameras()">
+                    💾 Guardar y Ver Cámaras
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        async function scanNetwork() {
+            const scanBtn = document.getElementById('scanBtn');
+            const loading = document.getElementById('loading');
+            const status = document.getElementById('status');
+            const networkRange = document.getElementById('networkRange').value;
+            
+            scanBtn.disabled = true;
+            loading.style.display = 'block';
+            status.style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/scan', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({network: networkRange})
+                });
+                
+                const data = await response.json();
+                
+                if (data.cameras && data.cameras.length > 0) {
+                    displayCameras(data.cameras);
+                    showStatus('success', `✅ Encontradas ${data.cameras.length} cámara(s)`);
+                } else {
+                    showStatus('error', '⚠️ No se encontraron cámaras en la red');
+                }
+            } catch (error) {
+                showStatus('error', '❌ Error al escanear: ' + error.message);
+            } finally {
+                scanBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        }
+        
+        function displayCameras(cameras) {
+            const cameraList = document.getElementById('cameraList');
+            const camerasDiv = document.getElementById('cameras');
+            
+            camerasDiv.innerHTML = cameras.map((cam, idx) => `
+                <div class="camera-item" id="camera-${idx}">
+                    <div class="camera-header">
+                        <div class="camera-info">
+                            <div class="camera-ip">📹 ${cam.ip}</div>
+                            <div class="camera-ports">Puertos: ${cam.ports.join(', ')}</div>
+                        </div>
+                        <input type="checkbox" id="check-${idx}" onchange="toggleCamera(${idx})">
+                    </div>
+                    <div class="camera-credentials" style="display: none;" id="cred-${idx}">
+                        <div class="form-group">
+                            <label>Nombre</label>
+                            <input type="text" id="name-${idx}" value="Cámara ${idx + 1}">
+                        </div>
+                        <div class="form-group">
+                            <label>Usuario</label>
+                            <input type="text" id="user-${idx}" value="admin">
+                        </div>
+                        <div class="form-group">
+                            <label>Contraseña</label>
+                            <input type="password" id="pass-${idx}" value="">
+                            <button class="btn btn-primary btn-small" onclick="detectStreams(${idx}, event)">🔍 Detectar Streams</button>
+                        </div>
+                    </div>
+                    <div class="streams-list" id="streams-${idx}"></div>
+                </div>
+            `).join('');
+            
+            cameraList.style.display = 'block';
+        }
+        
+        function toggleCamera(idx) {
+            const checkbox = document.getElementById(`check-${idx}`);
+            const credentials = document.getElementById(`cred-${idx}`);
+            const item = document.getElementById(`camera-${idx}`);
+            const streamsList = document.getElementById(`streams-${idx}`);
+            
+            if (checkbox.checked) {
+                credentials.style.display = 'grid';
+                item.classList.add('selected');
+            } else {
+                credentials.style.display = 'none';
+                streamsList.style.display = 'none';
+                item.classList.remove('selected');
+            }
+        }
+        
+        async function detectStreams(idx, event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const ip = document.querySelector(`#camera-${idx} .camera-ip`).textContent.replace('📹 ', '');
+            const user = document.getElementById(`user-${idx}`).value;
+            const pass = document.getElementById(`pass-${idx}`).value;
+            const streamsList = document.getElementById(`streams-${idx}`);
+            
+            if (!user || !pass) {
+                showStatus('error', '⚠️ Ingresa usuario y contraseña primero');
+                return;
+            }
+            
+            streamsList.innerHTML = '<p style="text-align:center; color:#667eea;">⏳ Detectando streams...</p>';
+            streamsList.style.display = 'block';
+            
+            try {
+                const response = await fetch('/api/detect-streams', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ip, user, password: pass})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.streams.length > 0) {
+                    streamsList.innerHTML = `
+                        <strong>Streams disponibles:</strong>
+                        ${data.streams.map((stream, sIdx) => `
+                            <label class="stream-option" onclick="selectStream(${idx}, ${sIdx})">
+                                <input type="radio" name="stream-${idx}" value="${sIdx}" ${sIdx === 0 ? 'checked' : ''}>
+                                <div class="stream-content">
+                                    <div class="stream-name">${stream.name || 'Stream ' + (sIdx + 1)}</div>
+                                    <div class="stream-url">${stream.url}</div>
+                                </div>
+                            </label>
+                        `).join('')}
+                    `;
+                    
+                    // Marcar el primero como seleccionado
+                    document.querySelector(`#streams-${idx} .stream-option`).classList.add('selected');
+                } else {
+                    streamsList.innerHTML = '<p style="color:#ef4444;">❌ No se pudieron detectar streams. Se usará URL por defecto.</p>';
+                }
+            } catch (error) {
+                streamsList.innerHTML = '<p style="color:#ef4444;">❌ Error detectando streams. Se usará URL por defecto.</p>';
+            }
+        }
+        
+        function selectStream(camIdx, streamIdx) {
+            // Actualizar selección visual
+            const options = document.querySelectorAll(`#streams-${camIdx} .stream-option`);
+            options.forEach((opt, idx) => {
+                opt.classList.toggle('selected', idx === streamIdx);
+            });
+        }
+        
+        async function saveCameras() {
+            const cameras = [];
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+            
+            checkboxes.forEach((checkbox, idx) => {
+                const realIdx = checkbox.id.split('-')[1];
+                const ip = document.querySelector(`#camera-${realIdx} .camera-ip`).textContent.replace('📹 ', '');
+                const name = document.getElementById(`name-${realIdx}`).value;
+                const user = document.getElementById(`user-${realIdx}`).value;
+                const pass = document.getElementById(`pass-${realIdx}`).value;
+                
+                // Obtener stream seleccionado si existe
+                let selectedStreamUrl = null;
+                const selectedStream = document.querySelector(`input[name="stream-${realIdx}"]:checked`);
+                if (selectedStream) {
+                    const streamIdx = parseInt(selectedStream.value);
+                    const streamUrlElem = document.querySelector(`#streams-${realIdx} .stream-option:nth-child(${streamIdx + 2}) .stream-url`);
+                    if (streamUrlElem) {
+                        selectedStreamUrl = streamUrlElem.textContent;
+                    }
+                }
+                
+                cameras.push({ip, name, user, password: pass, stream_url: selectedStreamUrl});
+            });
+            
+            if (cameras.length === 0) {
+                showStatus('error', '⚠️ Selecciona al menos una cámara');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/cameras/setup', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({cameras})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus('success', '✅ Cámaras configuradas correctamente. Redirigiendo...');
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                } else {
+                    showStatus('error', '❌ Error: ' + data.message);
+                }
+            } catch (error) {
+                showStatus('error', '❌ Error al guardar: ' + error.message);
+            }
+        }
+        
+        function showStatus(type, message) {
+            const status = document.getElementById('status');
+            status.className = `status ${type}`;
+            status.textContent = message;
+            status.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
