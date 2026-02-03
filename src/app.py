@@ -249,6 +249,98 @@ async def list_cameras():
     return cameras_info
 
 
+@app.post("/api/cameras/add-manual")
+async def add_manual_camera(request: Request):
+    """Add a camera manually by URL"""
+    try:
+        data = await request.json()
+        name = data.get('name', '').strip()
+        url = data.get('url', '').strip()
+        
+        if not name or not url:
+            return JSONResponse(
+                {"success": False, "message": "Nombre y URL son requeridos"},
+                status_code=400
+            )
+        
+        if not url.startswith('rtsp://'):
+            return JSONResponse(
+                {"success": False, "message": "URL debe comenzar con rtsp://"},
+                status_code=400
+            )
+        
+        global CAMERAS
+        
+        # Generate new camera ID
+        camera_num = len(CAMERAS) + 1
+        camera_id = f"camera{camera_num}"
+        while camera_id in CAMERAS:
+            camera_num += 1
+            camera_id = f"camera{camera_num}"
+        
+        # Add camera to config
+        CAMERAS[camera_id] = {
+            "name": name,
+            "url": url,
+            "enabled": True,
+            "info": {
+                "max_resolution": {"width": 1920, "height": 1080},
+                "max_fps": 30,
+                "codecs": ["H264"]
+            }
+        }
+        
+        # Save configuration
+        save_cameras_config(CAMERAS)
+        
+        # Start camera
+        camera = FFmpegCamera(
+            camera_id=camera_id,
+            rtsp_url=url,
+            name=name
+        )
+        active_cameras[camera_id] = camera
+        await camera.start()
+        
+        return JSONResponse({"success": True, "camera_id": camera_id})
+        
+    except Exception as e:
+        return JSONResponse(
+            {"success": False, "message": str(e)},
+            status_code=500
+        )
+
+
+@app.delete("/api/cameras/{camera_id}")
+async def delete_camera(camera_id: str):
+    """Delete a configured camera"""
+    try:
+        global CAMERAS
+        
+        if camera_id not in CAMERAS:
+            return JSONResponse(
+                {"success": False, "message": "Cámara no encontrada"},
+                status_code=404
+            )
+        
+        # Stop camera if running
+        if camera_id in active_cameras:
+            await active_cameras[camera_id].close()
+            del active_cameras[camera_id]
+        
+        # Remove from config
+        del CAMERAS[camera_id]
+        save_cameras_config(CAMERAS)
+        
+        return JSONResponse({"success": True})
+        
+    except Exception as e:
+        return JSONResponse(
+            {"success": False, "message": str(e)},
+            status_code=500
+        )
+
+
 # ========== API: VIDEO STREAMING ==========
 
 @app.get("/video_feed/{camera_id}")
@@ -405,6 +497,53 @@ async def list_recordings():
     except Exception as e:
         return JSONResponse(
             {"success": False, "message": str(e), "recordings": []},
+            status_code=500
+        )
+
+
+@app.post("/api/recordings/delete")
+async def delete_recordings(request: Request):
+    """Delete selected recordings"""
+    try:
+        data = await request.json()
+        filenames = data.get('filenames', [])
+        
+        if not filenames:
+            return JSONResponse(
+                {"success": False, "message": "No se especificaron archivos"},
+                status_code=400
+            )
+        
+        deleted = 0
+        errors = []
+        
+        for filename in filenames:
+            try:
+                file_path = RECORDINGS_DIR / filename
+                
+                # Security check: ensure file is within recordings directory
+                if not file_path.resolve().parent == RECORDINGS_DIR.resolve():
+                    errors.append(f"{filename}: ruta inválida")
+                    continue
+                
+                if file_path.exists() and file_path.is_file():
+                    file_path.unlink()
+                    deleted += 1
+                else:
+                    errors.append(f"{filename}: no encontrado")
+                    
+            except Exception as e:
+                errors.append(f"{filename}: {str(e)}")
+        
+        return JSONResponse({
+            "success": True,
+            "deleted": deleted,
+            "errors": errors
+        })
+        
+    except Exception as e:
+        return JSONResponse(
+            {"success": False, "message": str(e)},
             status_code=500
         )
 

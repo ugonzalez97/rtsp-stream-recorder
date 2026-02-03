@@ -291,17 +291,25 @@
     </style>
 </head>
 <body>
-    <div class="top-bar">
-        <a href="/" class="back-btn">📹 Ver Cámaras</a>
-        <a href="/recording" class="back-btn">🎥 Grabar</a>
-        <a href="/recordings_viewer" class="back-btn">📼 Grabaciones</a>
-    </div>
+    {% include 'partials/navbar.html' %}
     
     <div class="container">
         <h1>⚙️ Configuración de Cámaras</h1>
         
         <div class="card scan-section">
-            <h2>Escanear Red</h2>
+            <h2>⚙️ Configurar Cámaras</h2>
+            
+            <div style="margin-bottom: 30px; padding: 20px; background: #f0fdf4; border-radius: 10px; border-left: 4px solid #10b981;">
+                <h3 style="color: #065f46; margin-bottom: 10px;">🔗 Añadir Cámara por URL</h3>
+                <p style="color: #047857; margin-bottom: 15px; font-size: 0.9em;">Si conoces la URL RTSP de tu cámara, agrégala directamente</p>
+                <div style="display: grid; grid-template-columns: 2fr 3fr 1fr; gap: 10px;">
+                    <input type="text" id="manualName" placeholder="Nombre (ej: Cámara Entrada)" style="padding: 10px; border: 2px solid #10b981; border-radius: 8px;">
+                    <input type="text" id="manualUrl" placeholder="rtsp://usuario:contraseña@192.168.1.100:554/stream" style="padding: 10px; border: 2px solid #10b981; border-radius: 8px;">
+                    <button class="btn btn-success" onclick="addManualCamera()" style="white-space: nowrap;">➕ Añadir</button>
+                </div>
+            </div>
+            
+            <h2>🔍 Escanear Red</h2>
             <p style="color: #6b7280; margin: 15px 0;">Buscar cámaras RTSP en tu red local</p>
             
             <div class="network-input">
@@ -317,6 +325,12 @@
             </div>
             
             <div class="status" id="status"></div>
+        </div>
+        
+        <div class="card" id="configuredCameras" style="display: none;">
+            <h2>📹 Cámaras Configuradas</h2>
+            <p style="color: #6b7280; margin-bottom: 20px;">Administra tus cámaras configuradas</p>
+            <div id="configuredList"></div>
         </div>
         
         <div class="card camera-list" id="cameraList">
@@ -336,6 +350,93 @@
     </div>
     
     <script>
+        // Load configured cameras on page load
+        loadConfiguredCameras();
+        
+        async function loadConfiguredCameras() {
+            try {
+                const response = await fetch('/api/cameras');
+                const cameras = await response.json();
+                
+                const container = document.getElementById('configuredCameras');
+                const list = document.getElementById('configuredList');
+                
+                if (Object.keys(cameras).length > 0) {
+                    container.style.display = 'block';
+                    list.innerHTML = Object.entries(cameras).map(([id, info]) => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f9fafb; border-radius: 8px; margin-bottom: 10px;">
+                            <div>
+                                <div style="font-weight: 600; color: #1f2937; margin-bottom: 5px;">📹 ${info.name}</div>
+                                <div style="font-size: 0.85em; color: #6b7280; word-break: break-all;">${info.url}</div>
+                            </div>
+                            <button onclick="deleteCamera('${id}')" style="padding: 8px 16px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; white-space: nowrap;">🗑️ Eliminar</button>
+                        </div>
+                    `).join('');
+                } else {
+                    container.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error loading configured cameras:', error);
+            }
+        }
+        
+        async function addManualCamera() {
+            const name = document.getElementById('manualName').value.trim();
+            const url = document.getElementById('manualUrl').value.trim();
+            
+            if (!name || !url) {
+                showStatus('error', '⚠️ Ingresa nombre y URL de la cámara');
+                return;
+            }
+            
+            if (!url.startsWith('rtsp://')) {
+                showStatus('error', '⚠️ La URL debe comenzar con rtsp://');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/cameras/add-manual', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({name, url})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus('success', '✅ Cámara añadida correctamente');
+                    document.getElementById('manualName').value = '';
+                    document.getElementById('manualUrl').value = '';
+                    loadConfiguredCameras();
+                } else {
+                    showStatus('error', '❌ Error: ' + data.message);
+                }
+            } catch (error) {
+                showStatus('error', '❌ Error: ' + error.message);
+            }
+        }
+        
+        async function deleteCamera(cameraId) {
+            if (!confirm('¿Estás seguro de eliminar esta cámara?')) return;
+            
+            try {
+                const response = await fetch(`/api/cameras/${cameraId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus('success', '✅ Cámara eliminada');
+                    loadConfiguredCameras();
+                } else {
+                    showStatus('error', '❌ Error: ' + data.message);
+                }
+            } catch (error) {
+                showStatus('error', '❌ Error: ' + error.message);
+            }
+        }
+        
         async function scanNetwork() {
             const scanBtn = document.getElementById('scanBtn');
             const loading = document.getElementById('loading');

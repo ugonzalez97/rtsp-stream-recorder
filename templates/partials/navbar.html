@@ -1,0 +1,40 @@
+<div class="top-bar">
+    <a href="/" class="nav-btn">📹 Ver Cámaras</a>
+    <a href="/recording" class="nav-btn">🎥 Grabar</a>
+    <a href="/recordings_viewer" class="nav-btn">📼 Grabaciones</a>
+    <a href="/setup" class="nav-btn">⚙️ Configurar</a>
+</div>
+
+<style>
+.top-bar {
+    width: 100%;
+    max-width: 1400px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin: 0 auto 20px;
+}
+
+.nav-btn {
+    padding: 10px 18px;
+    background: white;
+    color: #667eea;
+    border: 2px solid #667eea;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-decoration: none;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.nav-btn:hover {
+    background: #667eea;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgba(0,0,0,0.2);
+}
+</style>

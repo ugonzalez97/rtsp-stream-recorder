@@ -38,4 +38,4 @@ class RecordingConfig(BaseModel):
     format: str = "mp4"
     extra_args: str = ""
     continuous: bool = False  # Continuous recording with segments
-    segment_duration: int = 15  # Duration of each segment in minutes (for continuous mode)
+    segment_duration: int = 60  # Duration of each segment in seconds (for continuous mode)

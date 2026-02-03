@@ -106,7 +106,7 @@ class FFmpegRecorder:
                 command.extend(['-c:a', 'aac', '-b:a', '128k'])
                 
                 # Segmentation configuration
-                segment_time = self.config.segment_duration * 60  # Convert to seconds
+                segment_time = self.config.segment_duration  # Already in seconds
                 command.extend([
                     '-f', 'segment',
                     '-segment_time', str(segment_time),

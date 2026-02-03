@@ -131,71 +131,90 @@
     </style>
 </head>
 <body>
-    <div class="top-bar">
-        <a href="/setup" class="nav-btn">⚙️ Configurar Cámaras</a>
-        <a href="/recording" class="nav-btn">🎥 Grabar</a>
-        <a href="/recordings_viewer" class="nav-btn">📼 Grabaciones</a>
-    </div>
+    {% include 'partials/navbar.html' %}
     
     <div class="container">
         <h1>📹 Visor de Cámaras RTSP</h1>
         
         <div class="video-container">
             <div class="camera-selector">
-                <select id="cameraSelect" onchange="changeCamera()">
-                    <option value="camera1">Cámara Principal</option>
-                </select>
+                <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap; justify-content: center;">
+                    <div id="cameraCheckboxes" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
+                    <button onclick="updateMosaic()" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">🔄 Actualizar Vista</button>
+                </div>
             </div>
             
-            <div class="stream-wrapper">
-                <img id="stream" src="/video_feed/camera1" alt="RTSP Stream">
-            </div>
-            
-            <div class="status connected" id="status">
-                🟢 Conectado
-            </div>
+            <div id="mosaicContainer" style="display: grid; gap: 10px; margin-top: 20px;"></div>
             
             <div class="info">
-                <p>Stream en tiempo real con FFmpeg (múltiples cámaras)</p>
+                <p>Stream en tiempo real con FFmpeg - Selecciona una o más cámaras para vista en mosaico</p>
             </div>
         </div>
     </div>
     
     <script>
-        const streamImg = document.getElementById('stream');
-        const statusDiv = document.getElementById('status');
-        const cameraSelect = document.getElementById('cameraSelect');
+        let availableCameras = {};
         
         // Cargar lista de cámaras disponibles
         fetch('/api/cameras')
             .then(response => response.json())
             .then(cameras => {
-                cameraSelect.innerHTML = '';
+                availableCameras = cameras;
+                const container = document.getElementById('cameraCheckboxes');
+                container.innerHTML = '';
+                
                 for (const [id, info] of Object.entries(cameras)) {
-                    const option = document.createElement('option');
-                    option.value = id;
-                    option.textContent = info.name;
-                    cameraSelect.appendChild(option);
+                    const label = document.createElement('label');
+                    label.style.cssText = 'display: flex; align-items: center; gap: 5px; padding: 8px 12px; background: white; border-radius: 6px; cursor: pointer; font-weight: 600;';
+                    label.innerHTML = `
+                        <input type="checkbox" value="${id}" checked>
+                        ${info.name}
+                    `;
+                    container.appendChild(label);
                 }
+                
+                updateMosaic();
             })
             .catch(err => console.error('Error cargando cámaras:', err));
         
-        function changeCamera() {
-            const cameraId = cameraSelect.value;
-            streamImg.src = `/video_feed/${cameraId}?t=${Date.now()}`;
+        function updateMosaic() {
+            const checkboxes = document.querySelectorAll('#cameraCheckboxes input[type="checkbox"]:checked');
+            const container = document.getElementById('mosaicContainer');
+            
+            if (checkboxes.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">Selecciona al menos una cámara</p>';
+                return;
+            }
+            
+            // Calculate grid layout
+            let columns = 1;
+            if (checkboxes.length === 2) columns = 2;
+            else if (checkboxes.length <= 4) columns = 2;
+            else if (checkboxes.length <= 9) columns = 3;
+            else columns = 4;
+            
+            container.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+            container.innerHTML = '';
+            
+            checkboxes.forEach(checkbox => {
+                const cameraId = checkbox.value;
+                const cameraInfo = availableCameras[cameraId];
+                
+                const streamDiv = document.createElement('div');
+                streamDiv.style.cssText = 'position: relative; background: #000; border-radius: 10px; overflow: hidden;';
+                streamDiv.innerHTML = `
+                    <div style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 5px 10px; border-radius: 5px; font-weight: 600; z-index: 10;">
+                        ${cameraInfo.name}
+                    </div>
+                    <img src="/video_feed/${cameraId}?t=${Date.now()}" 
+                         alt="${cameraInfo.name}" 
+                         style="width: 100%; height: auto; display: block;"
+                         onerror="this.parentElement.style.border='3px solid #ef4444'"
+                         onload="this.parentElement.style.border='3px solid #10b981'">
+                `;
+                container.appendChild(streamDiv);
+            });
         }
-        
-        // Detectar errores de carga
-        streamImg.onerror = function() {
-            statusDiv.className = 'status disconnected';
-            statusDiv.innerHTML = '🔴 Desconectado';
-        };
-        
-        // Detectar cuando se carga correctamente
-        streamImg.onload = function() {
-            statusDiv.className = 'status connected';
-            statusDiv.innerHTML = '🟢 Conectado';
-        };
     </script>
 </body>
 </html>

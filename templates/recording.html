@@ -340,14 +340,8 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🎥 Grabación de Cámaras</h1>
-            <div>
-                <a href="/" class="nav-btn">📹 Ver Cámaras</a>
-                <a href="/recordings_viewer" class="nav-btn" style="margin-left: 10px;">📼 Grabaciones</a>
-                <a href="/setup" class="nav-btn" style="margin-left: 10px;">⚙️ Configurar</a>
-            </div>
-        </div>
+        {% include 'partials/navbar.html' %}
+        <h1 style="color: white; text-align: center; margin: 20px 0 30px; font-size: 2.5em; text-shadow: 2px 2px 4px rgba(0,0,0,0.2);">🎥 Grabación de Cámaras</h1>
         
         <div class="main-content" id="mainContent">
             <div class="preview-container" id="previewContainer">
@@ -628,16 +622,15 @@
             const durationUnit = document.getElementById('durationUnit').value;
             const continuous = document.getElementById('continuousMode').value === 'true';
             
-            // En modo continuo, segment_duration es la duración seleccionada convertida a minutos
-            // En modo normal, segment_duration no se usa
-            let segmentMinutes = duration;
-            if (durationUnit === 'seconds') {
-                segmentMinutes = Math.max(1, Math.ceil(duration / 60));
+            // En modo continuo, segment_duration es la duración seleccionada en segundos
+            // Convertir todo a segundos para tener precisión
+            let segmentSeconds = duration;
+            if (durationUnit === 'minutes') {
+                segmentSeconds = duration * 60;
             } else if (durationUnit === 'hours') {
-                segmentMinutes = duration * 60;
-            } else {
-                segmentMinutes = duration; // ya está en minutos
+                segmentSeconds = duration * 3600;
             }
+            // segmentSeconds ya está en segundos
             
             const config = {
                 resolution: document.getElementById('resolution').value,
@@ -649,7 +642,7 @@
                 format: document.getElementById('format').value,
                 extra_args: document.getElementById('extraArgs').value,
                 continuous: continuous,
-                segment_duration: segmentMinutes
+                segment_duration: segmentSeconds
             };
             
             const recordBtn = document.getElementById('recordBtn');
@@ -724,7 +717,9 @@
                     container.innerHTML = data.recordings.map(rec => {
                         let modeInfo = '';
                         if (rec.continuous) {
-                            modeInfo = `<div style="font-size: 0.85em; color: #10b981; margin-top: 3px;">🔁 Continua - Segmentos de ${rec.segment_duration} min</div>`;
+                            const segmentSec = rec.segment_duration || 60;
+                            const segDisplay = segmentSec >= 60 ? `${Math.floor(segmentSec/60)} min` : `${segmentSec} seg`;
+                            modeInfo = `<div style="font-size: 0.85em; color: #10b981; margin-top: 3px;">🔁 Continua - Segmentos de ${segDisplay}</div>`;
                         } else {
                             const durationText = `${rec.total_duration} ${rec.duration_unit === 'seconds' ? 'seg' : rec.duration_unit === 'minutes' ? 'min' : 'h'}`;
                             modeInfo = `<div style="font-size: 0.85em; color: #3b82f6; margin-top: 3px;">📄 Único archivo - ${durationText}</div>`;

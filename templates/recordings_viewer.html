@@ -242,14 +242,8 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>📼 Visualizador de Grabaciones</h1>
-            <div>
-                <a href="/" class="nav-btn">📹 Ver Cámaras</a>
-                <a href="/recording" class="nav-btn">🎥 Grabar</a>
-                <a href="/setup" class="nav-btn">⚙️ Configurar</a>
-            </div>
-        </div>
+        {% include 'partials/navbar.html' %}
+        <h1 style="color: white; text-align: center; margin: 20px 0 30px; font-size: 2.5em; text-shadow: 2px 2px 4px rgba(0,0,0,0.2);">📼 Visualizador de Grabaciones</h1>
         
         <div class="stats" id="stats">
             Cargando grabaciones...
@@ -272,6 +266,8 @@
             </select>
             
             <button class="btn" onclick="loadRecordings()">🔄 Actualizar</button>
+            <button class="btn" onclick="selectAll()" id="selectAllBtn">☑️ Seleccionar Todo</button>
+            <button class="btn" onclick="deleteSelected()" style="background: #ef4444;" id="deleteBtn">🗑️ Eliminar Seleccionadas</button>
         </div>
         
         <div class="videos-grid" id="videosGrid">
@@ -362,18 +358,23 @@
             }
             
             grid.innerHTML = pageRecordings.map(rec => `
-                <div class="video-card" onclick="playVideo('${rec.filename}')">
-                    <div class="thumbnail-container">
-                        <div class="thumbnail-placeholder">🎥</div>
-                        <div class="play-overlay">▶</div>
-                    </div>
-                    <div class="video-content">
-                        <div class="video-name">${rec.filename}</div>
-                        <div class="video-info">
-                            📅 ${formatDate(rec.modified)}<br>
-                            💾 ${formatSize(rec.size)}<br>
-                            📦 ${rec.format.toUpperCase()}<br>
-                            ${rec.duration ? `⏱️ ${formatDuration(rec.duration)}` : ''}
+                <div class="video-card" style="position: relative;">
+                    <input type="checkbox" class="video-select" value="${rec.filename}" 
+                           style="position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; z-index: 10; cursor: pointer;"
+                           onclick="event.stopPropagation()">
+                    <div onclick="playVideo('${rec.filename}')" style="cursor: pointer;">
+                        <div class="thumbnail-container">
+                            <div class="thumbnail-placeholder">🎥</div>
+                            <div class="play-overlay">▶</div>
+                        </div>
+                        <div class="video-content">
+                            <div class="video-name">${rec.filename}</div>
+                            <div class="video-info">
+                                📅 ${formatDate(rec.modified)}<br>
+                                💾 ${formatSize(rec.size)}<br>
+                                📦 ${rec.format.toUpperCase()}<br>
+                                ${rec.duration ? `⏱️ ${formatDuration(rec.duration)}` : ''}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -445,6 +446,44 @@
                 return `${minutes}m ${secs}s`;
             } else {
                 return `${secs}s`;
+            }
+        }
+        
+        function selectAll() {
+            const checkboxes = document.querySelectorAll('.video-select');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !allChecked);
+            document.getElementById('selectAllBtn').textContent = allChecked ? '☑️ Seleccionar Todo' : '⬜ Deseleccionar Todo';
+        }
+        
+        async function deleteSelected() {
+            const checkboxes = document.querySelectorAll('.video-select:checked');
+            const filenames = Array.from(checkboxes).map(cb => cb.value);
+            
+            if (filenames.length === 0) {
+                alert('⚠️ Selecciona al menos una grabación para eliminar');
+                return;
+            }
+            
+            if (!confirm(`¿Eliminar ${filenames.length} grabación(es)?`)) return;
+            
+            try {
+                const response = await fetch('/api/recordings/delete', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({filenames})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`✅ ${data.deleted} grabación(es) eliminada(s)`);
+                    loadRecordings();
+                } else {
+                    alert('❌ Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
             }
         }
         
