@@ -4,6 +4,7 @@ Main FastAPI application for RTSP camera viewing and recording
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse, FileResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 import asyncio
 from typing import Dict
 import subprocess
@@ -26,6 +27,9 @@ from network_utils import (
 
 app = FastAPI(title="RTSP Stream Recorder")
 templates = Jinja2Templates(directory="templates")
+
+# Mount static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Application global state
 CAMERAS = {}

@@ -4,58 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visualizador de Grabaciones</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-        
-        h1 {
-            color: white;
-            font-size: 2.5em;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-        }
-        
-        .nav-btn {
-            padding: 10px 20px;
-            background: white;
-            color: #667eea;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            transition: all 0.3s;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            display: inline-block;
-            margin-left: 10px;
-        }
-        
-        .nav-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(0,0,0,0.2);
-        }
-        
+        /* Estilos específicos de esta página */
         .controls {
             background: white;
             border-radius: 15px;
@@ -78,25 +29,6 @@
             border: 2px solid #e5e7eb;
             border-radius: 8px;
             font-size: 1em;
-        }
-        
-        .btn {
-            padding: 8px 16px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .btn:hover {
-            background: #5568d3;
-        }
-        
-        .btn.active {
-            background: #10b981;
         }
         
         .videos-grid {
@@ -122,7 +54,7 @@
         .thumbnail-container {
             width: 100%;
             height: 180px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #475569 0%, #334155 100%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -189,7 +121,7 @@
         }
         
         .no-videos h2 {
-            color: #667eea;
+            color: #1e40af;
             margin-bottom: 15px;
             font-size: 2em;
         }
@@ -205,22 +137,24 @@
         .pagination button {
             padding: 10px 15px;
             background: white;
-            color: #667eea;
-            border: 2px solid #667eea;
-            border-radius: 8px;
+            color: #1e40af;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
         }
         
         .pagination button:hover:not(:disabled) {
-            background: #667eea;
+            background: #1e40af;
             color: white;
+            border-color: #1e40af;
         }
         
         .pagination button.active {
-            background: #667eea;
+            background: #1e40af;
             color: white;
+            border-color: #1e40af;
         }
         
         .pagination button:disabled {
