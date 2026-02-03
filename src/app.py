@@ -23,6 +23,10 @@ from network_utils import (
     get_rtsp_urls_from_onvif,
     get_camera_info_from_onvif
 )
+from logger import setup_logger
+
+# Setup logger
+logger = setup_logger(__name__)
 
 
 app = FastAPI(title="RTSP Stream Recorder")
@@ -59,8 +63,10 @@ async def startup_event():
     CAMERAS = load_cameras_config()
     
     if not CAMERAS:
-        print("⚠️ No hay cámaras configuradas. Accede a /setup para configurar.")
+        logger.warning("No cameras configured. Access /setup to configure cameras")
         return
+    
+    logger.info(f"Loading {len(CAMERAS)} configured camera(s)")
     
     for camera_id, config in CAMERAS.items():
         if config.get("enabled", True):
@@ -73,8 +79,12 @@ async def startup_event():
             
             try:
                 await camera.start()
+                logger.info(f"Camera started successfully: {config['name']} ({camera_id})")
             except Exception as e:
-                print(f"⚠️ No se pudo iniciar {config['name']}: {e}")
+                logger.error(f"Failed to start camera {config['name']}: {e}")
+    
+    # Start background task to clean up finished recordings
+    asyncio.create_task(cleanup_finished_recordings())
 
 
 @app.on_event("shutdown")
@@ -82,6 +92,30 @@ async def shutdown_event():
     """Free resources on application close"""
     for camera in active_cameras.values():
         await camera.close()
+
+
+async def cleanup_finished_recordings():
+    """Background task that periodically checks and removes finished recordings"""
+    logger.info("Started background task: cleanup_finished_recordings")
+    
+    while True:
+        try:
+            await asyncio.sleep(5)  # Check every 5 seconds
+            
+            finished = []
+            for recording_id, recorder in list(active_recordings.items()):
+                if not recorder.is_still_recording():
+                    finished.append(recording_id)
+            
+            # Remove finished recordings
+            for recording_id in finished:
+                recorder = active_recordings[recording_id]
+                logger.info(f"Removing finished recording from active list: {recorder.filename}")
+                del active_recordings[recording_id]
+                
+        except Exception as e:
+            logger.error(f"Error in cleanup_finished_recordings task: {e}")
+            await asyncio.sleep(10)  # Wait longer if there's an error
 
 
 # ========== HTML ROUTES ==========
@@ -143,7 +177,7 @@ async def scan_network(scan_req: ScanRequest):
 async def detect_streams(req: DetectStreamsRequest):
     """Detects available ONVIF streams from a camera"""
     try:
-        print(f"🔍 Detectando streams de {req.ip}...")
+        logger.info(f"Detecting streams from camera at {req.ip}")
         streams = await asyncio.to_thread(
             get_rtsp_urls_from_onvif,
             req.ip,
@@ -152,11 +186,13 @@ async def detect_streams(req: DetectStreamsRequest):
             req.password
         )
         
+        logger.info(f"Found {len(streams)} stream(s) from {req.ip}")
         return JSONResponse({
             "success": True,
             "streams": streams
         })
     except Exception as e:
+        logger.error(f"Error detecting streams from {req.ip}: {e}")
         return JSONResponse(
             {"success": False, "message": str(e), "streams": []},
             status_code=500
@@ -179,7 +215,7 @@ async def setup_cameras(request: Request):
             # If specific stream already selected, use it
             if cam_data.get('stream_url'):
                 rtsp_url = cam_data['stream_url']
-                print(f"✓ Usando stream seleccionado: {rtsp_url}")
+                logger.info(f"Using pre-selected stream for {cam_data['name']}: {rtsp_url}")
             else:
                 # Try to get RTSP URL using ONVIF
                 streams = await asyncio.to_thread(
@@ -306,6 +342,7 @@ async def add_manual_camera(request: Request):
         active_cameras[camera_id] = camera
         await camera.start()
         
+        logger.info(f"Manual camera added successfully: {name} ({camera_id}) - {url}")
         return JSONResponse({"success": True, "camera_id": camera_id})
         
     except Exception as e:
@@ -336,6 +373,7 @@ async def delete_camera(camera_id: str):
         del CAMERAS[camera_id]
         save_cameras_config(CAMERAS)
         
+        logger.info(f"Camera deleted successfully: {camera_id}")
         return JSONResponse({"success": True})
         
     except Exception as e:
@@ -390,12 +428,14 @@ async def start_recording(config: RecordingConfig):
         
         if success:
             active_recordings[recording_id] = recorder
+            logger.info(f"Recording started: {camera_config['name']} - {recorder.filename}")
             return JSONResponse({
                 "success": True,
                 "recording_id": recording_id,
                 "filename": recorder.filename
             })
         else:
+            logger.error(f"Failed to start recording for camera: {camera_config['name']}")
             return JSONResponse(
                 {"success": False, "message": "Error al iniciar grabación"},
                 status_code=500
@@ -422,6 +462,7 @@ async def stop_recording(recording_id: str):
         success = await asyncio.to_thread(recorder.stop)
         
         if success:
+            logger.info(f"Recording stopped: {recorder.camera_name} - {recorder.filename}")
             del active_recordings[recording_id]
             return JSONResponse({"success": True})
         else:
@@ -484,7 +525,7 @@ async def list_recordings():
                         if result.returncode == 0:
                             duration = float(result.stdout.strip())
                     except Exception as e:
-                        print(f"⚠️ Error obteniendo duración de {file.name}: {e}")
+                        logger.debug(f"Could not get duration for {file.name}: {e}")
                     
                     recordings.append({
                         'filename': file.name,
@@ -533,6 +574,7 @@ async def delete_recordings(request: Request):
                 if file_path.exists() and file_path.is_file():
                     file_path.unlink()
                     deleted += 1
+                    logger.info(f"Recording deleted: {filename}")
                 else:
                     errors.append(f"{filename}: no encontrado")
                     

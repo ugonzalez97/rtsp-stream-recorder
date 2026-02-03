@@ -7,6 +7,10 @@ from pathlib import Path
 from typing import Optional, Dict
 from datetime import datetime
 from models import RecordingConfig
+from logger import setup_logger
+
+# Setup logger
+logger = setup_logger(__name__)
 
 
 # Recordings directory
@@ -148,7 +152,8 @@ class FFmpegRecorder:
             # Output
             command.append(str(output_path))
             
-            print(f"🎥 Iniciando grabación: {' '.join(command)}")
+            logger.info(f"Starting recording: {self.camera_name}")
+            logger.debug(f"FFmpeg command: {' '.join(command)}")
             
             self.process = subprocess.Popen(
                 command,
@@ -159,11 +164,11 @@ class FFmpegRecorder:
             self.is_recording = True
             self.start_time = datetime.now()
             
-            print(f"✅ Grabación iniciada: {self.filename}")
+            logger.info(f"Recording started successfully: {self.filename}")
             return True
             
         except Exception as e:
-            print(f"❌ Error iniciando grabación: {e}")
+            logger.error(f"Failed to start recording for {self.camera_name}: {e}")
             return False
     
     def stop(self):
@@ -184,9 +189,24 @@ class FFmpegRecorder:
                 self.process.wait()
             
             self.is_recording = False
-            print(f"⏹️ Grabación detenida: {self.filename}")
+            logger.info(f"Recording stopped: {self.filename}")
             return True
             
         except Exception as e:
-            print(f"❌ Error deteniendo grabación: {e}")
+            logger.error(f"Failed to stop recording {self.filename}: {e}")
             return False
+    
+    def is_still_recording(self) -> bool:
+        """Check if the recording process is still running"""
+        if not self.process:
+            return False
+        
+        # Check if process is still alive
+        poll = self.process.poll()
+        if poll is not None:
+            # Process has finished
+            self.is_recording = False
+            logger.info(f"Recording completed naturally: {self.filename}")
+            return False
+        
+        return True

@@ -6,6 +6,10 @@ import threading
 from queue import Queue, Empty
 from typing import Optional
 import time
+from logger import setup_logger
+
+# Setup logger
+logger = setup_logger(__name__)
 
 
 class FFmpegCamera:
@@ -23,7 +27,10 @@ class FFmpegCamera:
     async def start(self):
         """Starts FFmpeg process to capture RTSP stream"""
         if self.is_running:
+            logger.warning(f"Camera {self.name} is already running")
             return
+        
+        logger.info(f"Starting camera stream: {self.name} ({self.camera_id})")
             
         try:
             # FFmpeg command optimized for LOW LATENCY
@@ -59,10 +66,10 @@ class FFmpegCamera:
             self.reader_thread = threading.Thread(target=self._read_frames, daemon=True)
             self.reader_thread.start()
             
-            print(f"✅ FFmpeg iniciado para {self.name} ({self.camera_id}) - Modo baja latencia")
+            logger.info(f"Camera stream started successfully: {self.name}")
             
         except Exception as e:
-            print(f"❌ Error iniciando FFmpeg para {self.name}: {e}")
+            logger.error(f"Failed to start FFmpeg for {self.name}: {e}")
             raise
     
     def _read_frames(self):
@@ -140,6 +147,7 @@ class FFmpegCamera:
     
     async def close(self):
         """Closes FFmpeg process"""
+        logger.info(f"Stopping camera stream: {self.name}")
         self.is_running = False
         if self.process:
             self.process.terminate()
@@ -148,4 +156,4 @@ class FFmpegCamera:
             except subprocess.TimeoutExpired:
                 self.process.kill()
             self.process = None
-        print(f"🔌 FFmpeg detenido para {self.name}")
+        logger.info(f"Camera stream stopped: {self.name}")
